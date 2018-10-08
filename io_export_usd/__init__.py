@@ -7,14 +7,16 @@ bl_info = {
     "blender": (2, 79, 0),
     "location": "File > Export > USDZ (.usdz)",
     "description": "Exports USDZ file format, or .usd",
-    "wiki_url": "http://wiki.blender.org/index.php/Extensions:2.6/Py/"
-    "Scripts/Import-Export/USDZ_Exporter",
+    "wiki_url": "http://wiki.blender.org/index.php/Extensions:2.79/Py/"
+    "Scripts/Import-Export/USDZ",
     "category": "Import-Export",
 }
 
+# Allow reloading the module with F8 in the Blender window
+# python modules don't re-import without reload()
 if "export" in locals():
     from importlib import reload
-    # Operator calls into export, so do in this order
+    # Operator calls into export module
     reload(export)
     reload(operator)
     del reload
@@ -26,7 +28,7 @@ from . import export
 
 def menu_func(self, context):
     self.layout.operator(operator.USDExporter.bl_idname,
-                         text="UNIVERSAL SCENE DESCRIPTION <> (.usd)")
+                         text="Universal Scene Description (.usd / .usdz)")
 
 
 def register():
