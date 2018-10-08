@@ -1,4 +1,5 @@
 
+# License GPLv3
 
 import os
 import mathutils

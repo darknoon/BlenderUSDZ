@@ -1,3 +1,6 @@
+# This file is NOT licensed under the GPL because it does not interact with the Blender python API.
+# Use of this file may be goverened under terms of the USD binaries or other restrictions.
+
 import json
 import sys
 
