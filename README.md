@@ -12,7 +12,7 @@ Because the USD tools use Python 2 and blender uses Python 3.5 (as of 2.79b), th
 
 ### Installation macOS
 
-Copy the USD directory from Apple's build of the USD SDK `USDPython/USD/` as `io_export_usd/usd_python2/USD/` in this repository, then symlink this into your user scripts directory:
+Copy the USD directory from [https://developer.apple.com/go/?id=python-usd-library](Apple's build of the USD SDK) `USDPython/USD/` as `io_export_usd/usd_python2/USD/` in this repository, then symlink this into your user scripts directory:
 
 ```
 python symlink.py
@@ -25,3 +25,12 @@ Not tested, but you should be able to install a built version of USD in the same
 ### Installation Windows
 
 Not yet supported
+
+## Troubleshooting
+
+If you want to see debug output, run blender on the command line (it prints there)
+
+```bash
+alias blender=/Applications/blender.app/Contents/MacOS/blender
+blender
+```
