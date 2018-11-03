@@ -58,10 +58,11 @@ def write_usd(objects, filePath):
     python2_path = '/usr/bin/python2.7'
     dirname = os.path.dirname(__file__)
     script_path = os.path.join(dirname, 'usd_python2/usdWriter.py')
+    library_path = os.path.join(dirname, 'usd_python2/USD/')
     # We need to make sure Python can find our
     env = {
-        "PYTHONPATH": "$PYTHONPATH:../USDPython/USD/",
-        "PATH": "$PATH:../USDPython/USD/",
+        "PYTHONPATH": "$PYTHONPATH:" + library_path,
+        "PATH": "$PATH:" + library_path,
     }
     strs = [json.dumps(o) for o in objects]
     input_bytes = '\n'.join(strs).encode('utf-8')
