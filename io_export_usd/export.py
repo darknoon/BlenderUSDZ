@@ -9,6 +9,8 @@ import sys
 
 DEBUG = os.environ.get('BLENDER_DEBUG', False)
 
+TIMEOUT = 5.0
+
 
 def exportMesh(o, settings):
     print("Exporting mesh: {}".format(o))
@@ -69,7 +71,7 @@ def write_usd(objects, filePath):
     result = subprocess.run(
         [python2_path, script_path, filePath],
         input=input_bytes,
-        timeout=5.0,
+        timeout=TIMEOUT,
         env=env)
     print("Output was: {}".format(result.stdout))
 
