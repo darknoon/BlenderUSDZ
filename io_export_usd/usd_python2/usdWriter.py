@@ -75,7 +75,10 @@ def usd_mesh_from_json(data):
 
     # Encode material. Todo: submeshes, etc.
     material_name = usd_escape_path_component(data["material"])
-    mesh.GetPrim().CreateRelationship("material:binding", custom=False).AddTarget('/Materials/' + material_name)
+    if material_name:
+        # This might not be the supported way to do this
+        mesh.GetPrim().CreateRelationship("material:binding",
+                                          custom=False).AddTarget('/Materials/' + material_name)
 
     # Encode transformation
     usd_xform_from_json(data, mesh)
@@ -123,6 +126,7 @@ def usd_camera_from_json(data):
 
 
 
+
 def usd_material_from_json(data):
     print("USD material from json...", data)
 
@@ -132,11 +136,22 @@ def usd_material_from_json(data):
 
     material = UsdShade.Material.Define(stage, base_path)
 
-    pbrShader = UsdShade.Shader.Define(stage, base_path + '/PBRShader')
-    pbrShader.CreateIdAttr("UsdPreviewSurface")
-    pbrShader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set((1.0, 0.0, 0.0))
-    pbrShader.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(0.4)
-    pbrShader.CreateInput("metallic", Sdf.ValueTypeNames.Float).Set(0.0)
+    shader_data = data["shader"]
+    if shader_data and shader_data["type"] == "principled":
+
+        pbrShader = UsdShade.Shader.Define(stage, base_path + '/PBRShader')
+
+        def addConstantInput(name, sdfType):
+            value = shader_data[name]["constant"]
+            if value:
+                if sdfType == Sdf.ValueTypeNames.Color3f:
+                    value = tuple(value)
+                pbrShader.CreateInput(name, sdfType).Set(value)
+
+        pbrShader.CreateIdAttr("UsdPreviewSurface")
+        addConstantInput("diffuseColor", Sdf.ValueTypeNames.Color3f)
+        addConstantInput("roughness", Sdf.ValueTypeNames.Float)
+        addConstantInput("metallic", Sdf.ValueTypeNames.Float)
 
     # TODO: textures via https://graphics.pixar.com/usd/docs/Simple-Shading-in-USD.html
 

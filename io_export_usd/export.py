@@ -22,12 +22,64 @@ def object_get_rotation(o):
     }
 
 
+def exportPrincipledBSDFShader(shader, settings):
+    def get_in(id):
+        return next(s for s in shader.inputs if s.identifier == id)
+
+    color_in = get_in("Base Color")
+    metal_in = get_in("Metallic")
+    rough_in = get_in("Roughness")
+
+    diffuse_color = {"constant": tuple(color_in.default_value[0:3])}
+    # TODO: there is another setting, Transmission that should be considered
+    opacity = {"constant": color_in.default_value[3]}
+    metallic = {"constant": metal_in.default_value}
+    roughness = {"constant": rough_in.default_value}
+    return {
+        "type": "principled",
+        "diffuseColor": diffuse_color,
+        "metallic": metallic,
+        "roughness": roughness,
+        "opacity": opacity,
+    }
+
+
 def exportMaterial(m, settings):
     # If there is a principled node hooked up, maybe we're in luck?
+
+    node_tree = m.node_tree
+    if node_tree:
+        # Export nodes.
+        # Find the material connected to the output
+        output_node = next(
+            (n for n in node_tree.nodes if n.type == "OUTPUT_MATERIAL"))
+        if output_node is None:
+            print("Couldn't find output for material: ", m)
+            return None
+
+        output_node_input = output_node.inputs[0]
+        if len(output_node_input.links) is 1:
+            shader = output_node_input.links[0].from_socket.node
+            print("Found shader to export: ", shader, shader.type)
+            shader = exportPrincipledBSDFShader(shader, settings)
+        else:
+            print("Couldn't find shader connected for material: ", m)
+            return None
+        # Look for the shader hooked up to this node
+
+    else:
+        # Export colors directly
+        shader = {
+            "type": "basic",
+            "diffuseColor": {"constant": tuple(m.diffuse_color)},
+        }
+        pass
+
     print("Asked to export: {}".format(m))
     return {
         "name": m.name,
         "type": "material",
+        "shader": shader,
     }
 
 
