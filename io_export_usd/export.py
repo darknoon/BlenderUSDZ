@@ -22,6 +22,16 @@ def object_get_rotation(o):
     }
 
 
+def exportMaterial(m, settings):
+    # If there is a principled node hooked up, maybe we're in luck?
+    print("Asked to export: {}".format(m))
+    return {
+        "name": m.name,
+        "type": "material",
+    }
+
+
+# This corresponds to blender's Mesh object type
 def exportMesh(o, settings):
     print("Exporting mesh: {}".format(o))
 
@@ -50,13 +60,29 @@ def exportMesh(o, settings):
     subsurf_mod = next((
         m for m in o.modifiers if m.type == 'SUBSURF'), None)
 
-    # Export everything as JSON for now to input into other process w/ Python 2
+    # Ok, where are the submeshes?
+    # How does USD handle submeshes / material bindings?
+    # def Material "MyMaterial"
+    # {
+    #   token outputs:surface.connect = </Materials/MyMaterial/pbrMat1.outputs:surface>
+    #   def Shader "pbrMat1" {
+    #       ...
+    #   }
+    # }
+    #
+    material_slots = o.material_slots.items()
+    if len(material_slots) > 0:
+        print("slot 0: ", material_slots[0])
+        (key, material) = material_slots[0]
+        material_name = material.material.name
+
     json_data = {
         "name": o.name,
         "type": "mesh",
         "location": tuple(o.location),
         "rotation": object_get_rotation(o),
         "scale": tuple(o.scale),
+        "material": material_name,
         "positions": [[p.x, p.y, p.z] for p in positions],
         "normals": [[n.x, n.y, n.z] for n in normals],
         "creases": [[e.vertices[0], e.vertices[1]] for e in edges if e.crease > 0.0],
@@ -90,9 +116,6 @@ def exportCamera(o, settings):
         # TODO: Convert FOV to lens mm
         # TODO: do we need to consider data.sensor_fit in this?
 
-        # Grab location & rotation of object?
-
-        # Export everything as JSON for now to input into other process w/ Python 2
     json_data = {
         "name": o.name,
         "type": "camera",
@@ -166,13 +189,17 @@ def exportUSD(context, filePath, settings):
     else:
         objects = (ob for ob in scene.objects if ob.visible_get())
 
-    mw = None
+    # TODO: only export referenced materials
+    materials = bpy.data.materials
 
     output = []
 
+    # Export everything as JSON for now to input into other process w/ Python 2
     try:
+        for m in materials:
+            writeMaterial(context, m, output, settings)
         for o in objects:
-            addToOutput(context, o, mw, output, settings)
+            writeObject(context, o, output, settings)
         print("Ready to write.")
 
     except Exception:
@@ -189,10 +216,21 @@ def exportUSD(context, filePath, settings):
     print("Finished")
 
 
-def addToOutput(ctx, o, mw, output, settings):
+def writeMaterial(ctx, m, output, settings):
     """
-    Export one item from export list.
-    mw - modelview
+    Export one Material from the blender data
+    """
+    if m.type == "SURFACE":
+        result = exportMaterial(m, settings)
+        if result is not None:
+            output.append(result)
+    else:
+        return None
+
+
+def writeObject(ctx, o, output, settings):
+    """
+    Export one Object from a scene
     """
     if settings['verbose']:
         print('Exporting {}'.format(o))

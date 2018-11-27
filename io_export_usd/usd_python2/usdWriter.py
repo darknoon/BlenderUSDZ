@@ -11,7 +11,7 @@ if sys.version_info.major >= 3:
 from pprint import pprint
 
 try:
-    from pxr import UsdGeom, Usd
+    from pxr import UsdGeom, UsdShade, Usd, Sdf
 except:
     print("Make sure you have the USD files in your path!")
     print("sys.path is currently: ", sys.path)
@@ -26,7 +26,7 @@ def flatten(p):
 
 # It's not clear what names are allowed, using pxr/lib/usd/lib/sdf/path.ll as a reference
 # TODO: show this name somewhere in the UI, since it won't round-trip with USD
-def sanitize_name(name):
+def usd_escape_path_component(name):
     return name.replace(".", "_").replace(":", "_").replace(" ", "_")
 
 # Setup the properties of any type derived from USDGeom Xform
@@ -70,7 +70,12 @@ def usd_mesh_from_json(data):
         vertex_id for polygon in polygons for vertex_id in polygon]
 
     # create mesh
-    mesh = UsdGeom.Mesh.Define(stage, '/' + sanitize_name(data["name"]))
+    name = usd_escape_path_component(data["name"])
+    mesh = UsdGeom.Mesh.Define(stage, '/' + name)
+
+    # Encode material. Todo: submeshes, etc.
+    material_name = usd_escape_path_component(data["material"])
+    mesh.GetPrim().CreateRelationship("material:binding", custom=False).AddTarget('/Materials/' + material_name)
 
     # Encode transformation
     usd_xform_from_json(data, mesh)
@@ -99,9 +104,8 @@ def usd_mesh_from_json(data):
 
 
 def usd_camera_from_json(data):
-    print("USD camera from json...", data)
-
-    camera = UsdGeom.Camera.Define(stage, '/' + sanitize_name(data["name"]))
+    name = usd_escape_path_component(data["name"])
+    camera = UsdGeom.Camera.Define(stage, '/' + name)
 
     usd_xform_from_json(data, camera)
 
@@ -118,9 +122,31 @@ def usd_camera_from_json(data):
             camera.CreateFocalLengthAttr(focal_length)
 
 
+
+def usd_material_from_json(data):
+    print("USD material from json...", data)
+
+    name = usd_escape_path_component(data["name"])
+
+    base_path = "/Materials/" + name
+
+    material = UsdShade.Material.Define(stage, base_path)
+
+    pbrShader = UsdShade.Shader.Define(stage, base_path + '/PBRShader')
+    pbrShader.CreateIdAttr("UsdPreviewSurface")
+    pbrShader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set((1.0, 0.0, 0.0))
+    pbrShader.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(0.4)
+    pbrShader.CreateInput("metallic", Sdf.ValueTypeNames.Float).Set(0.0)
+
+    # TODO: textures via https://graphics.pixar.com/usd/docs/Simple-Shading-in-USD.html
+
+    material.CreateSurfaceOutput().ConnectToSource(pbrShader, "surface")
+
+
 WRITERS = {
     "mesh": usd_mesh_from_json,
     "camera": usd_camera_from_json,
+    "material": usd_material_from_json,
 }
 
 # TODO: eliminate this global variable
