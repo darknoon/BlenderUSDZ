@@ -11,6 +11,15 @@ DEBUG = os.environ.get('BLENDER_DEBUG', False)
 
 TIMEOUT = 5.0
 
+# TODO: factor this and location together into something logical
+
+
+def object_get_rotation(o):
+    return {
+        "eulerAngles": tuple(o.rotation_euler),
+        "eulerOrder": o.rotation_euler.order,
+    }
+
 
 def exportMesh(o, settings):
     print("Exporting mesh: {}".format(o))
@@ -28,7 +37,11 @@ def exportMesh(o, settings):
     # Export everything as JSON for now to input into other process w/ Python 2
     json_data = {
         "name": o.name,
+        "type": "mesh",
+
         "location": tuple(o.location),
+        "rotation": object_get_rotation(o),
+
         "positions": [[p.x, p.y, p.z] for p in positions],
         "normals": [[n.x, n.y, n.z] for n in normals],
         "creases": [[e.vertices[0], e.vertices[1]] for e in edges if e.crease > 0.0],
@@ -39,12 +52,49 @@ def exportMesh(o, settings):
     return json_data
 
 
+def exportCamera(o, settings):
+    print("Exporting camera: {}".format(o))
+    data = o.data
+
+    projection = {
+        "PERSP": "perspective",
+        "ORTHO": "orthographic",
+        "PANO": None,
+    }
+
+    # Stereo cameras are not supported
+
+    # Is this focal length mm?
+    if data.lens_unit == "MILLIMETERS":
+        focal_length = data.lens
+    elif data.lens_unit == "FOV":
+        pass
+        # TODO: Convert FOV to lens mm
+        # TODO: do we need to consider data.sensor_fit in this?
+
+        # Grab location & rotation of object?
+
+        # Export everything as JSON for now to input into other process w/ Python 2
+    json_data = {
+        "name": o.name,
+        "type": "camera",
+        "location": tuple(o.location),
+        "rotation": object_get_rotation(o),
+        "projection": projection[data.type],
+        "lens": {
+            "focalLength": focal_length,
+            # "fov": fov,
+        }
+    }
+    return json_data
+
+
 EXPORTERS = {
     'MESH': exportMesh,
     'CURVE': None,
     'EMPTY': None,
     'TEXT': None,
-    'CAMERA': None,
+    'CAMERA': exportCamera,
     'LAMP': None,
 }
 
@@ -106,10 +156,9 @@ def exportUSD(context, filePath, settings):
     except Exception as e:
         print('Nothing exported. Error: {} {}'.format(type(e), str(e)))
 
-    # DEBUG
+    # TODO: check DEBUG flag for this
     write_json(filePath, output)
 
-    # TODO: subprocess!
     write_usd(output, filePath)
 
     print("Finished")

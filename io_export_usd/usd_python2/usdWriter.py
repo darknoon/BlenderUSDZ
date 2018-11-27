@@ -23,6 +23,33 @@ print("Will be writing filePath: " + filePath)
 def flatten(p):
     return [v for p in p for v in p]
 
+# Setup the properties of any type derived from USDGeom Xform
+
+
+def usd_xform_from_json(data, xform):
+    xform.AddTranslateOp().Set(tuple(data["location"]))
+
+    rotation = data["rotation"]
+    if rotation:
+        order = rotation["eulerOrder"]
+        euler_angles = tuple(rotation["eulerAngles"])
+        # Probably not the most intelligent way to do this, but...
+        if order == "XYZ":
+            xform.AddRotateXYZOp().Set(euler_angles)
+        elif order == "XZY":
+            xform.AddRotateXZYOp().Set(euler_angles)
+        elif order == "YXZ":
+            xform.AddRotateYXZOp().Set(euler_angles)
+        elif order == "YZX":
+            xform.AddRotateYZXOp().Set(euler_angles)
+        elif order == "ZXY":
+            xform.AddRotateZXYOp().Set(euler_angles)
+        elif order == "ZYX":
+            xform.AddRotateZYXOp().Set(euler_angles)
+
+    xform.AddScaleOp().Set((1, 1, 1))
+    return xform
+
 
 def usd_mesh_from_json(data):
     positions = [tuple(p) for p in data["positions"]]
@@ -39,9 +66,7 @@ def usd_mesh_from_json(data):
     mesh = UsdGeom.Mesh.Define(stage, '/' + data["name"])
 
     # Encode transformation
-    mesh.AddTranslateOp().Set(tuple(data["location"]))
-    mesh.AddRotateXYZOp().Set((0, 0, 0))
-    mesh.AddScaleOp().Set((1, 1, 1))
+    usd_xform_from_json(data, mesh)
 
     mesh.CreatePointsAttr(positions)
     # TODO: we should export the BB after subdivision, right?
@@ -66,12 +91,44 @@ def usd_mesh_from_json(data):
         face_vertex_indices)  # per-face vertex indices
 
 
+def usd_camera_from_json(data):
+    print("USD camera from json...", data)
+
+    camera = UsdGeom.Camera.Define(stage, '/' + data["name"])
+
+    usd_xform_from_json(data, camera)
+
+    camera_type = data["projection"]
+    if camera_type == "perspective":
+        camera.CreateProjectionAttr(UsdGeom.Tokens.perspective, True)
+    elif camera_type == "orthographic":
+        camera.CreateProjectionAttr(UsdGeom.Tokens.orthographic, True)
+
+    lens = data["lens"]
+    if lens:
+        focal_length = lens["focalLength"]
+        if focal_length:
+            camera.CreateFocalLengthAttr(focal_length)
+
+
+WRITERS = {
+    "mesh": usd_mesh_from_json,
+    "camera": usd_camera_from_json,
+}
+
+# TODO: eliminate this global variable
 stage = Usd.Stage.CreateNew(filePath)
 
 for line in sys.stdin:
     # print("Got a payload!: {}".format(line))
-    payload = json.loads(line)
-    usd_mesh_from_json(payload)
+    data = json.loads(line)
+    object_type = data["type"]
+    writer = WRITERS[object_type]
+    if writer:
+        writer(data)
+    else:
+        print("Invalid type in data, continuing: ", object_type)
+
 
 print("USD data:")
 print(stage.GetRootLayer().ExportToString())
