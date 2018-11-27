@@ -5,18 +5,19 @@ import os
 import mathutils
 import json
 import sys
+from math import pi
 
 
 DEBUG = os.environ.get('BLENDER_DEBUG', False)
 
 TIMEOUT = 5.0
 
-# TODO: factor this and location together into something logical
+# TODO: I think we need to convert from blender's Z-up coordinates to Y-up coordinates
 
 
 def object_get_rotation(o):
     return {
-        "eulerAngles": tuple(o.rotation_euler),
+        "eulerAngles": tuple(a * (180.0 / pi) for a in o.rotation_euler),
         "eulerOrder": o.rotation_euler.order,
     }
 
@@ -38,10 +39,9 @@ def exportMesh(o, settings):
     json_data = {
         "name": o.name,
         "type": "mesh",
-
         "location": tuple(o.location),
         "rotation": object_get_rotation(o),
-
+        "scale": tuple(o.scale),
         "positions": [[p.x, p.y, p.z] for p in positions],
         "normals": [[n.x, n.y, n.z] for n in normals],
         "creases": [[e.vertices[0], e.vertices[1]] for e in edges if e.crease > 0.0],
@@ -80,6 +80,7 @@ def exportCamera(o, settings):
         "type": "camera",
         "location": tuple(o.location),
         "rotation": object_get_rotation(o),
+        "scale": tuple(o.scale),
         "projection": projection[data.type],
         "lens": {
             "focalLength": focal_length,

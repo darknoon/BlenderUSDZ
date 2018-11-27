@@ -33,6 +33,7 @@ def usd_xform_from_json(data, xform):
     if rotation:
         order = rotation["eulerOrder"]
         euler_angles = tuple(rotation["eulerAngles"])
+
         # Probably not the most intelligent way to do this, but...
         if order == "XYZ":
             xform.AddRotateXYZOp().Set(euler_angles)
@@ -47,7 +48,9 @@ def usd_xform_from_json(data, xform):
         elif order == "ZYX":
             xform.AddRotateZYXOp().Set(euler_angles)
 
-    xform.AddScaleOp().Set((1, 1, 1))
+    scale = data["scale"]
+    xform.AddScaleOp().Set(tuple(scale))
+
     return xform
 
 
