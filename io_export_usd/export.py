@@ -30,11 +30,13 @@ def exportPrincipledBSDFShader(shader, settings):
     metal_in = get_in("Metallic")
     rough_in = get_in("Roughness")
 
-    diffuse_color = {"constant": tuple(color_in.default_value[0:3])}
+    print("color_in is ", color_in)
+
+    diffuse_color = {"default": tuple(color_in.default_value[0:3])}
     # TODO: there is another setting, Transmission that should be considered
-    opacity = {"constant": color_in.default_value[3]}
-    metallic = {"constant": metal_in.default_value}
-    roughness = {"constant": rough_in.default_value}
+    opacity = {"default": color_in.default_value[3]}
+    metallic = {"default": metal_in.default_value}
+    roughness = {"default": rough_in.default_value}
     return {
         "type": "principled",
         "diffuseColor": diffuse_color,
@@ -272,12 +274,9 @@ def writeMaterial(ctx, m, output, settings):
     """
     Export one Material from the blender data
     """
-    if m.type == "SURFACE":
-        result = exportMaterial(m, settings)
-        if result is not None:
-            output.append(result)
-    else:
-        return None
+    result = exportMaterial(m, settings)
+    if result is not None:
+        output.append(result)
 
 
 def writeObject(ctx, o, output, settings):

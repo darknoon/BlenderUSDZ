@@ -140,15 +140,38 @@ def usd_material_from_json(data):
     if shader_data and shader_data["type"] == "principled":
 
         pbrShader = UsdShade.Shader.Define(stage, base_path + '/PBRShader')
+        pbrShader.CreateIdAttr("UsdPreviewSurface")
 
         def addConstantInput(name, sdfType):
-            value = shader_data[name]["constant"]
+            value = shader_data[name]["default"]
             if value:
                 if sdfType == Sdf.ValueTypeNames.Color3f:
                     value = tuple(value)
                 pbrShader.CreateInput(name, sdfType).Set(value)
 
-        pbrShader.CreateIdAttr("UsdPreviewSurface")
+        stReader = None
+
+        def addTextureInput(name, filename, sdfType):
+            nonlocal stReader
+            if not stReader:
+                stReader = UsdShade.Shader.Define(
+                    stage, base_path + '/stReader')
+                stReader.CreateIdAttr('UsdPrimvarReader_float2')
+            tex = UsdShade.Shader.Define(
+                stage, '/TexModel/boardMat/diffuseTexture')
+            tex.CreateIdAttr('UsdUVTexture')
+            tex.CreateInput(
+                'file', Sdf.ValueTypeNames.Asset).Set(filename)
+            tex.CreateInput(
+                "st", Sdf.ValueTypeNames.Float2).ConnectToSource(stReader, 'result')
+            tex.CreateOutput(
+                'rgb', sdfType)
+            pbrShader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).ConnectToSource(
+                tex, 'rgb')
+
+        def parseInput(name, data, sdfType):
+            value = shader_data[name]["texture"]
+
         addConstantInput("diffuseColor", Sdf.ValueTypeNames.Color3f)
         addConstantInput("roughness", Sdf.ValueTypeNames.Float)
         addConstantInput("metallic", Sdf.ValueTypeNames.Float)
