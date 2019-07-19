@@ -17,16 +17,16 @@ class USDExporter(bpy.types.Operator):
     bl_idname = "export.usdz"
     bl_label = "Export USDZ"
 
-    filepath = StringProperty(subtype='FILE_PATH')
+    filepath: StringProperty(subtype='FILE_PATH')
 
-    only_selected = BoolProperty(name="Only selected", default=False,
-                                 description="What object will be exported? Only selected / all objects")
+    only_selected: BoolProperty(name="Only selected", default=False,
+                                description="What object will be exported? Only selected / all objects")
 
-    apply_modifiers = BoolProperty(name="Apply modifiers", default=True,
-                                   description="Shall be modifiers applied during export?")
+    apply_modifiers: BoolProperty(name="Apply modifiers", default=True,
+                                  description="Shall be modifiers applied during export?")
 
-    verbose = BoolProperty(name="Verbose", default=False,
-                           description="Run the exporter in debug mode.  Check the console for output")
+    verbose: BoolProperty(name="Verbose", default=False,
+                          description="Run the exporter in debug mode.  Check the console for output")
 
     def execute(self, context):
         filePath = bpy.path.ensure_ext(self.filepath, ".usd")
