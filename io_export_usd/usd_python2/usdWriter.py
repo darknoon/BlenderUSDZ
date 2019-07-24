@@ -27,7 +27,7 @@ def flatten(p):
 # It's not clear what names are allowed, using pxr/lib/usd/lib/sdf/path.ll as a reference
 # TODO: show this name somewhere in the UI, since it won't round-trip with USD
 def sanitize_name(name):
-    return name.replace(".", "_").replace(":", "_")
+    return name.replace(".", "_").replace(":", "_").replace(" ", "_")
 
 # Setup the properties of any type derived from USDGeom Xform
 def usd_xform_from_json(data, xform):
