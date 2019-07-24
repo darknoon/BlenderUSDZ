@@ -24,9 +24,12 @@ print("Will be writing filePath: " + filePath)
 def flatten(p):
     return [v for p in p for v in p]
 
+# It's not clear what names are allowed, using pxr/lib/usd/lib/sdf/path.ll as a reference
+# TODO: show this name somewhere in the UI, since it won't round-trip with USD
+def sanitize_name(name):
+    return name.replace(".", "_").replace(":", "_")
+
 # Setup the properties of any type derived from USDGeom Xform
-
-
 def usd_xform_from_json(data, xform):
     xform.AddTranslateOp().Set(tuple(data["location"]))
 
@@ -67,7 +70,7 @@ def usd_mesh_from_json(data):
         vertex_id for polygon in polygons for vertex_id in polygon]
 
     # create mesh
-    mesh = UsdGeom.Mesh.Define(stage, '/' + data["name"])
+    mesh = UsdGeom.Mesh.Define(stage, '/' + sanitize_name(data["name"]))
 
     # Encode transformation
     usd_xform_from_json(data, mesh)
@@ -98,7 +101,7 @@ def usd_mesh_from_json(data):
 def usd_camera_from_json(data):
     print("USD camera from json...", data)
 
-    camera = UsdGeom.Camera.Define(stage, '/' + data["name"])
+    camera = UsdGeom.Camera.Define(stage, '/' + sanitize_name(data["name"]))
 
     usd_xform_from_json(data, camera)
 
@@ -128,6 +131,8 @@ for line in sys.stdin:
     data = json.loads(line)
     object_type = data["type"]
     writer = WRITERS[object_type]
+    object_name = data["name"]
+    print("writing: ", object_name, sanitize_name(object_name))
     if writer:
         writer(data)
     else:
