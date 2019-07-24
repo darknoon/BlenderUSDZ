@@ -1,3 +1,7 @@
+# Ignore python sdk from Apple
+
+io_export_usd/usd_python2/USD
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
