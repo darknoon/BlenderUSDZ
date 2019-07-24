@@ -27,7 +27,10 @@ def flatten(p):
 # It's not clear what names are allowed, using pxr/lib/usd/lib/sdf/path.ll as a reference
 # TODO: show this name somewhere in the UI, since it won't round-trip with USD
 def usd_escape_path_component(name):
-    return name.replace(".", "_").replace(":", "_").replace(" ", "_")
+    if isinstance(name, unicode):
+        return name.replace(".", "_").replace(":", "_").replace(" ", "_")
+    else:
+        return None
 
 # Setup the properties of any type derived from USDGeom Xform
 def usd_xform_from_json(data, xform):
@@ -132,6 +135,7 @@ def usd_material_from_json(data):
 
     name = usd_escape_path_component(data["name"])
 
+    # Base path for the material, reference below for relative paths
     base_path = "/Materials/" + name
 
     material = UsdShade.Material.Define(stage, base_path)
@@ -149,16 +153,19 @@ def usd_material_from_json(data):
                     value = tuple(value)
                 pbrShader.CreateInput(name, sdfType).Set(value)
 
-        stReader = None
-
         def addTextureInput(name, filename, sdfType):
-            nonlocal stReader
-            if not stReader:
+            # We only create a texture reader if necessary. 
+            # Unfortunately due to Python 2 limitations, we need to store it somewhere dumb, 
+            # in this case on the function, since we cannot rebind a variable in a nested function.
+            
+            if not hasattr(addTextureInput, 'stReader'):
                 stReader = UsdShade.Shader.Define(
                     stage, base_path + '/stReader')
                 stReader.CreateIdAttr('UsdPrimvarReader_float2')
+                # cache on self (despite actual `self` not being defined in nested functions)
+                addTextureInput.stReader = stReader
             tex = UsdShade.Shader.Define(
-                stage, '/TexModel/boardMat/diffuseTexture')
+                stage, base_path + '/diffuseTexture')
             tex.CreateIdAttr('UsdUVTexture')
             tex.CreateInput(
                 'file', Sdf.ValueTypeNames.Asset).Set(filename)
@@ -196,7 +203,7 @@ for line in sys.stdin:
     object_type = data["type"]
     writer = WRITERS[object_type]
     object_name = data["name"]
-    print("writing: ", object_name, sanitize_name(object_name))
+    print("writing: ", object_name, usd_escape_path_component(object_name))
     if writer:
         writer(data)
     else:

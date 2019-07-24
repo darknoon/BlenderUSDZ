@@ -125,6 +125,7 @@ def exportMesh(o, settings):
     # }
     #
     material_slots = o.material_slots.items()
+    material_name = None
     if len(material_slots) > 0:
         print("slot 0: ", material_slots[0])
         (key, material) = material_slots[0]
