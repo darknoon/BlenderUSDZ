@@ -30,13 +30,13 @@ class USDExporter(bpy.types.Operator):
 
     def execute(self, context):
         filePath = bpy.path.ensure_ext(self.filepath, ".usd")
-        config = {
+        settings = {
             'only_selected': self.only_selected,
             'apply_modifiers': self.apply_modifiers,
             'verbose': self.verbose
         }
 
-        export.exportUSD(context, filePath, config)
+        export.exportUSD(context, filePath, settings)
         return {'FINISHED'}
 
     def invoke(self, context, event):

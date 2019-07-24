@@ -6,7 +6,7 @@ import mathutils
 import json
 import sys
 from math import pi
-
+import bpy
 
 DEBUG = os.environ.get('BLENDER_DEBUG', False)
 
@@ -24,14 +24,29 @@ def object_get_rotation(o):
 
 def exportMesh(o, settings):
     print("Exporting mesh: {}".format(o))
-    data = o.data
-    edges = data.edges
-    positions = [v.co for v in data.vertices]
-    normals = [v.normal for v in data.vertices]
 
-    loops = data.loops
+    apply_modifiers = settings["apply_modifiers"]
 
-    # TODO: Check for subdivision modifier
+    if apply_modifiers:
+        # Apply modifiers
+        # This technique is from the GLTF2 exporter in Blender 2.80
+        # See also: https://docs.blender.org/api/current/bpy.types.Depsgraph.html#dependency-graph-simple-exporter
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        object_with_modifiers = o.evaluated_get(depsgraph)
+        mesh = object_with_modifiers.to_mesh(preserve_all_data_layers=True, depsgraph=depsgraph)
+    else:
+        object_with_modifiers = o
+        mesh = object_with_modifiers.to_mesh(preserve_all_data_layers=True)
+
+    # Is this correct?
+    edges = mesh.edges
+    positions = [v.co for v in mesh.vertices]
+    normals = [v.normal for v in mesh.vertices]
+    loops = mesh.loops
+
+    # Check for subdivision modifier
+    # TODO: apply all modifiers EXCEPT this one by default since USD supports subdivision
+    # There should be an option to subdivide the meshes as well...
     subsurf_mod = next((
         m for m in o.modifiers if m.type == 'SUBSURF'), None)
 
@@ -46,9 +61,12 @@ def exportMesh(o, settings):
         "normals": [[n.x, n.y, n.z] for n in normals],
         "creases": [[e.vertices[0], e.vertices[1]] for e in edges if e.crease > 0.0],
         "creaseSharpnesess": [e.crease for e in edges if e.crease > 0.0],
-        "polygons": [[loops[li].vertex_index for li in poly.loop_indices] for poly in data.polygons],
+        "polygons": [[loops[li].vertex_index for li in poly.loop_indices] for poly in mesh.polygons],
         "hasSubdivision": subsurf_mod is not None,
     }
+
+    object_with_modifiers.to_mesh_clear()
+
     return json_data
 
 
