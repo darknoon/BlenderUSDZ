@@ -11,7 +11,7 @@ bl_info = {
     "category": "Import-Export",
 }
 
-# Allow reloading the module with F8 in the Blender window
+# Allow reloading the module with command -> Reload Scripts
 # python modules don't re-import without reload()
 if "export" in locals():
     from importlib import reload

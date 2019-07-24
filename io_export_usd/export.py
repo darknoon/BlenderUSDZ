@@ -96,7 +96,7 @@ EXPORTERS = {
     'EMPTY': None,
     'TEXT': None,
     'CAMERA': exportCamera,
-    'LAMP': None,
+    'LIGHT': None,
 }
 
 
@@ -105,25 +105,30 @@ def write_json(name, obj):
     with open(name + '.json', "w", encoding="utf8") as f:
         json.dump(obj, f, allow_nan=False)
 
-
-def write_usd(objects, filePath):
+def run_python2_subprocess(input_bytes, filePath, timeout=TIMEOUT):
     import subprocess
     python2_path = '/usr/bin/python2.7'
     dirname = os.path.dirname(__file__)
     script_path = os.path.join(dirname, 'usd_python2/usdWriter.py')
-    library_path = os.path.join(dirname, 'usd_python2/USD/')
-    # We need to make sure Python can find our
+    library_python_path = os.path.join(dirname, 'usd_python2/USD/lib/python/')
+    library_path = os.path.join(dirname, 'usd_python2/USD/lib/')
+    # We need to make sure Python can find our USD sdk binaries
+    print("Adjusting $PYTHONPATH and $PATH for spawned executable...")
     env = {
-        "PYTHONPATH": "$PYTHONPATH:" + library_path,
+        "PYTHONPATH": "$PYTHONPATH:" + library_python_path,
         "PATH": "$PATH:" + library_path,
     }
-    strs = [json.dumps(o) for o in objects]
-    input_bytes = '\n'.join(strs).encode('utf-8')
-    result = subprocess.run(
+    return subprocess.run(
         [python2_path, script_path, filePath],
         input=input_bytes,
-        timeout=TIMEOUT,
+        timeout=timeout,
         env=env)
+
+
+def write_usd(objects, filePath):
+    strs = [json.dumps(o) for o in objects]
+    input_bytes = '\n'.join(strs).encode('utf-8')
+    result = run_python2_subprocess(input_bytes, filePath)
     print("Output was: {}".format(result.stdout))
 
 
@@ -139,11 +144,9 @@ def exportUSD(context, filePath, settings):
     scene = context.scene
 
     if settings['only_selected'] is True:
-        objects = (ob for ob in scene.objects if ob.is_visible(
-            scene) and ob.select)
+        objects = (ob for ob in scene.objects if ob.visible_get() and ob.select_get())
     else:
-        objects = (ob for ob in scene.objects if ob.is_visible(
-            scene))
+        objects = (ob for ob in scene.objects if ob.visible_get())
 
     mw = None
 
@@ -154,8 +157,11 @@ def exportUSD(context, filePath, settings):
             addToOutput(context, o, mw, output, settings)
         print("Ready to write.")
 
-    except Exception as e:
-        print('Nothing exported. Error: {} {}'.format(type(e), str(e)))
+    except Exception:
+        import traceback
+        print('Nothing exported.')
+        print(traceback.format_exc())
+        return
 
     # TODO: check DEBUG flag for this
     write_json(filePath, output)

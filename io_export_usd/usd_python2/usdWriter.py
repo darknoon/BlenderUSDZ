@@ -14,6 +14,7 @@ try:
     from pxr import UsdGeom, Usd
 except:
     print("Make sure you have the USD files in your path!")
+    print("sys.path is currently: ", sys.path)
 
 filePath = sys.argv[1]
 
