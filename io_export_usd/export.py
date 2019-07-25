@@ -40,11 +40,12 @@ def exportPrincipledBSDFShader(shader, settings):
     def find_connected_texture(shader_input):
         if len(shader_input.links) is 1:
             connected = shader_input.links[0].from_socket.node
-            image = connected.image
-            if image.source == "FILE":
-                image_path = image.filepath
-                if image_path is not "":
-                    return remove_prefix(image_path)
+            if type(connected) is bpy.types.ShaderNodeTexImage:
+                image = connected.image
+                if image.source == "FILE":
+                    image_path = image.filepath
+                    if image_path is not "":
+                        return remove_prefix(image_path)
         return None
     
     def add_texture(d, shader_input):
