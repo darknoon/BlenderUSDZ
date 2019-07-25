@@ -9,7 +9,11 @@
                     0.800000011920929,
                     0.800000011920929,
                     0.800000011920929
-                ]
+                ],
+                "texture": {
+                    "filename": "TexturedCube_Albedo.png"
+                }
+            },
             "metallic": {
                 "default": 0.0
             },

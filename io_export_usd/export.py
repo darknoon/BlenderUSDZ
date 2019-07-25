@@ -30,13 +30,35 @@ def exportPrincipledBSDFShader(shader, settings):
     metal_in = get_in("Metallic")
     rough_in = get_in("Roughness")
 
-    print("color_in is ", color_in)
+    def remove_prefix(path):
+        if path.startswith("//"):
+            return path[2:]
+        else:
+            return path
 
-    diffuse_color = {"default": tuple(color_in.default_value[0:3])}
+    # Find what is plugged into this connection
+    def find_connected_texture(shader_input):
+        if len(shader_input.links) is 1:
+            connected = shader_input.links[0].from_socket.node
+            image = connected.image
+            if image.source == "FILE":
+                image_path = image.filepath
+                if image_path is not "":
+                    return remove_prefix(image_path)
+        return None
+    
+    def add_texture(d, shader_input):
+        texture_path = find_connected_texture(shader_input)
+        if texture_path is not None:
+            d["texture"] = {"filename": texture_path}
+        return d
+
+    diffuse_color = add_texture({"default": tuple(color_in.default_value[0:3])}, color_in)
     # TODO: there is another setting, Transmission that should be considered
+    # TODO: look for opacity texture!
     opacity = {"default": color_in.default_value[3]}
-    metallic = {"default": metal_in.default_value}
-    roughness = {"default": rough_in.default_value}
+    metallic = add_texture({"default": metal_in.default_value}, metal_in)
+    roughness = add_texture({"default": rough_in.default_value}, rough_in)
     return {
         "type": "principled",
         "diffuseColor": diffuse_color,
@@ -102,11 +124,21 @@ def exportMesh(o, settings):
         object_with_modifiers = o
         mesh = object_with_modifiers.to_mesh(preserve_all_data_layers=True)
 
-    # Is this correct?
     edges = mesh.edges
     positions = [v.co for v in mesh.vertices]
     normals = [v.normal for v in mesh.vertices]
     loops = mesh.loops
+    # Check whether there are texture coordinates to export
+    # TODO: support multiple texture coordinates
+    # in the future, this should look at what texture coordinate is connected to the relevant texture nodes, etc
+    texture_coordinates = None
+    # If we have an active UV layer
+    if mesh.uv_layers.active:
+        # : MeshUVLoopLayer
+        uv_layer = mesh.uv_layers.active
+        # list of uv data for each polygon
+        polygon_uv_data = [[tuple(uv_layer.data[li].uv) for li in poly.loop_indices] for poly in mesh.polygons]
+        texture_coordinates = {"st": polygon_uv_data}
 
     # Check for subdivision modifier
     # TODO: apply all modifiers EXCEPT this one by default since USD supports subdivision
@@ -140,6 +172,7 @@ def exportMesh(o, settings):
         "material": material_name,
         "positions": [[p.x, p.y, p.z] for p in positions],
         "normals": [[n.x, n.y, n.z] for n in normals],
+        "textureCoordinates": texture_coordinates,
         "creases": [[e.vertices[0], e.vertices[1]] for e in edges if e.crease > 0.0],
         "creaseSharpnesess": [e.crease for e in edges if e.crease > 0.0],
         "polygons": [[loops[li].vertex_index for li in poly.loop_indices] for poly in mesh.polygons],

@@ -93,6 +93,23 @@ def usd_mesh_from_json(data):
         mesh).ComputeExtent(mesh.GetPointsAttr().Get()))
     mesh.CreateNormalsAttr(normals)
     # mesh.SetNormalsInterpolation(UsdGeom.Tokens.faceVarying) # normals are stored per-face
+    
+    # This currently only supports one texture coordinate, "st"
+    if data["textureCoordinates"]:
+        # dict of str -> array of TCs in [U,V] pairs ie [[u0, v0], [u1, v1], ...]
+        # interpolation ref https://graphics.pixar.com/usd/docs/api/class_usd_geom_primvar.html#Usd_InterpolationVals
+        for primvarKey, coords in data["textureCoordinates"].iteritems():
+            # Just in case we passed in a key that has a weird name, don't use it raw
+            primvarKey = usd_escape_path_component(primvarKey)
+            texCoords = mesh.CreatePrimvar(primvarKey, 
+                                           Sdf.ValueTypeNames.TexCoord2fArray, 
+                                           UsdGeom.Tokens.faceVarying)
+            # face_data = [[tuple(uv) for uv in polygon] for polygon in coords]
+            # Mush all of the TCs together. wat.
+            import itertools
+            face_data = [tuple(uv) for uv in itertools.chain.from_iterable(coords)]
+            print("face data is: ", face_data)
+            texCoords.Set(face_data)
 
     if data["hasSubdivision"]:
         # Technically redundant, since this is the default
@@ -128,10 +145,8 @@ def usd_camera_from_json(data):
             camera.CreateFocalLengthAttr(focal_length)
 
 
-
-
 def usd_material_from_json(data):
-    print("USD material from json...", data)
+    # print("USD material from json...", data)
 
     name = usd_escape_path_component(data["name"])
 
@@ -153,38 +168,50 @@ def usd_material_from_json(data):
                     value = tuple(value)
                 pbrShader.CreateInput(name, sdfType).Set(value)
 
-        def addTextureInput(name, filename, sdfType):
+        def addTextureInput(name, texture_node_name, filename, sdfType):
             # We only create a texture reader if necessary. 
             # Unfortunately due to Python 2 limitations, we need to store it somewhere dumb, 
             # in this case on the function, since we cannot rebind a variable in a nested function.
-            
             if not hasattr(addTextureInput, 'stReader'):
-                stReader = UsdShade.Shader.Define(
-                    stage, base_path + '/stReader')
+                stReader = UsdShade.Shader.Define(stage, base_path + '/stReader')
                 stReader.CreateIdAttr('UsdPrimvarReader_float2')
-                # cache on self (despite actual `self` not being defined in nested functions)
+
+                # The material has an input of which texture coordinate to read
+                stInput = material.CreateInput('frame:stPrimvarName', Sdf.ValueTypeNames.Token)
+                stInput.Set('st')
+                # Connect the UsdPrimvarReader_float2 to the material 
+                stReader.CreateInput('varname',Sdf.ValueTypeNames.Token).ConnectToSource(stInput)
+
+                # cache stReader on self
+                # (despite the `self` variable not being defined in nested functions in python 2)
                 addTextureInput.stReader = stReader
-            tex = UsdShade.Shader.Define(
-                stage, base_path + '/diffuseTexture')
+            stReader = addTextureInput.stReader
+
+            # UsdUVTexture actually reads from the texture
+            tex = UsdShade.Shader.Define(stage, base_path + texture_node_name)
             tex.CreateIdAttr('UsdUVTexture')
-            tex.CreateInput(
-                'file', Sdf.ValueTypeNames.Asset).Set(filename)
-            tex.CreateInput(
-                "st", Sdf.ValueTypeNames.Float2).ConnectToSource(stReader, 'result')
-            tex.CreateOutput(
-                'rgb', sdfType)
-            pbrShader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).ConnectToSource(
-                tex, 'rgb')
+            tex.CreateInput('file', Sdf.ValueTypeNames.Asset).Set(filename)
+            tex.CreateInput('st', Sdf.ValueTypeNames.Float2).ConnectToSource(stReader, 'result')
+            tex.CreateOutput('rgb', sdfType)
+            # Create input named name on our shader with the right type and plug it into our texture output
+            pbrShader.CreateInput(name, sdfType).ConnectToSource(tex, 'rgb')
 
-        def parseInput(name, data, sdfType):
-            value = shader_data[name]["texture"]
+        def parseInput(name, sdfType):
+            # is there a texture or a default
+            sh = shader_data[name]
+            if "texture" in sh:
+                filename = sh["texture"]["filename"]
+                # Give the texture node a sensible name like "diffuseColorTexture"
+                texture_node_name = name + "Texture"
+                addTextureInput(name, texture_node_name, filename, sdfType)
+            else:
+                addConstantInput(name, sdfType)
 
-        addConstantInput("diffuseColor", Sdf.ValueTypeNames.Color3f)
-        addConstantInput("roughness", Sdf.ValueTypeNames.Float)
-        addConstantInput("metallic", Sdf.ValueTypeNames.Float)
+        parseInput("diffuseColor", Sdf.ValueTypeNames.Color3f)
+        parseInput("roughness", Sdf.ValueTypeNames.Float)
+        parseInput("metallic", Sdf.ValueTypeNames.Float)
 
     # TODO: textures via https://graphics.pixar.com/usd/docs/Simple-Shading-in-USD.html
-
     material.CreateSurfaceOutput().ConnectToSource(pbrShader, "surface")
 
 
