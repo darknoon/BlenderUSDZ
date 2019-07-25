@@ -4,6 +4,14 @@ This work is very preliminary. Basically, I needed an easy way to test out subdi
 
 If you are interested in contributing, I might take your patches. In any case, feel free to fork and add to this.
 
+## TODO:
+
+- [ ] USDZ support
+    - [ ] Selector for USD format
+    - [ ] Add any images to bundle
+
+
+
 ## How it works
 
 Because the USD tools use Python 2 and blender uses Python 3.5 (as of 2.79b), this code does not import the USD tools into Blender directly. Rather, it launches python as a subprocess running `io_export_usd/usd_python2/usdWriter.py outputFilename.usd` and then feeds it commands in JSON format over STDIN.

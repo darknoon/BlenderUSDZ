@@ -5,11 +5,11 @@
         "shader": {
             "type": "principled",
             "diffuseColor": {
-                "constant": [0.0, 0.8000000715255737, 0.314333975315094]
+                "default": [0.0, 0.8000000715255737, 0.314333975315094]
             },
-            "metallic": { "constant": 0.0 },
-            "roughness": { "constant": 0.5 },
-            "opacity": { "constant": 1.0 }
+            "metallic": { "default": 0.0 },
+            "roughness": { "default": 0.5 },
+            "opacity": { "default": 1.0 }
         }
     },
     {

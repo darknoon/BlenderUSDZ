@@ -70,10 +70,10 @@ def exportMaterial(m, settings):
         # Look for the shader hooked up to this node
 
     else:
-        # Export colors directly
+        # Export basic blender colors directly (not common in 2.80 anymore)
         shader = {
             "type": "basic",
-            "diffuseColor": {"constant": tuple(m.diffuse_color)},
+            "diffuseColor": {"default": tuple(m.diffuse_color)},
         }
         pass
 
